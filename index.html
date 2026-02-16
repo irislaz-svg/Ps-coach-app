@@ -1,0 +1,681 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>People & Sports</title>
+  <style>
+    :root{
+      --bg:#0b0b10; --card:#151522; --text:#fff; --muted:#a9a9c0;
+      --accent:#41c7ea; --danger:#ff3b7a; --line:#26263a;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);
+      font-family:system-ui,-apple-system,"SF Pro Rounded",Segoe UI,Roboto,Arial;}
+    header{padding:16px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #222;}
+    .brand{display:flex;flex-direction:column}
+    .title{font-weight:900;font-size:18px;line-height:1.1}
+    .sub{color:var(--muted);font-size:13px}
+    main{max-width:980px;margin:22px auto;padding:18px}
+    .card{background:var(--card);border:1px solid #222;border-radius:16px;padding:18px;margin-bottom:14px}
+    h2{margin:0 0 10px 0;font-size:18px}
+    label{display:block;color:var(--muted);font-size:13px;margin-top:10px}
+    input,select,button,textarea{
+      width:100%;padding:12px;border-radius:12px;border:1px solid #333;background:#1d1d2e;color:#fff;font-size:16px;
+      margin-top:6px;
+    }
+    button{background:var(--accent);color:#000;font-weight:900;border:none;cursor:pointer}
+    button.secondary{background:#333;color:#fff;font-weight:700}
+    button.danger{background:var(--danger);color:#fff}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+    .col{flex:1;min-width:260px}
+    .small{flex:1;min-width:160px}
+    .note{color:var(--muted);font-size:13px;margin-top:6px}
+    .hidden{display:none !important}
+    .pill{display:inline-block;border:1px solid rgba(255,255,255,.08);background:#222;border-radius:999px;padding:6px 10px;color:var(--muted);font-size:12px}
+    table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}
+    td,th{border-bottom:1px solid #333;padding:10px 8px;text-align:left;vertical-align:top}
+    hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+    .timer{font-size:28px;font-weight:950;text-align:center;margin-top:10px}
+    .right{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+    a{color:var(--accent)}
+    .grid{display:grid;grid-template-columns:140px 1fr;gap:10px;align-items:center}
+    .dow{color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="title">Coach Mode</div>
+    <div class="sub">People & Sports</div>
+  </div>
+  <div class="right">
+    <button class="secondary" id="btnExport">Export</button>
+    <button class="secondary" id="btnLogout">Logout</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- LOGIN -->
+  <div class="card" id="viewLogin">
+    <h2>Login</h2>
+    <div class="note">Enter your email. You’ll get a login link.</div>
+    <label>Email</label>
+    <input id="loginEmail" placeholder="you@email.com" />
+    <button id="btnSendLink">Send magic link</button>
+    <div class="note" id="loginMsg"></div>
+  </div>
+
+  <!-- ONBOARDING -->
+  <div class="card hidden" id="viewOnboarding">
+    <h2>Set up your account</h2>
+    <label>Full name</label>
+    <input id="fullName" placeholder="Lior" />
+    <label>Role</label>
+    <select id="roleSelect">
+      <option value="coach">Coach</option>
+      <option value="athlete">Athlete</option>
+    </select>
+    <button id="btnCreateProfile">Continue</button>
+    <div class="note" id="onboardMsg"></div>
+  </div>
+
+  <!-- COACH -->
+  <div class="hidden" id="viewCoach">
+    <div class="card">
+      <h2>Coach Dashboard</h2>
+      <div class="note">Pick an athlete to set the weekly schedule (Sun–Sat).</div>
+      <label>Athlete</label>
+      <select id="athleteSelect"></select>
+      <div class="note">If you don’t see athletes yet, they need to sign up once so they appear here.</div>
+    </div>
+
+    <div class="card">
+      <h2>Weekly Schedule</h2>
+      <div class="note">One workout per day. Recurring weekly.</div>
+      <div id="scheduleGrid"></div>
+      <button id="btnSaveSchedule">Save schedule</button>
+      <div class="note" id="coachMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Latest Sessions</h2>
+      <table>
+        <thead><tr><th>Date</th><th>Athlete</th><th>Workout</th><th>Status</th></tr></thead>
+        <tbody id="coachSessions"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ATHLETE -->
+  <div class="hidden" id="viewAthlete">
+    <div class="card">
+      <h2>Today</h2>
+      <div class="pill" id="todayPill"></div>
+      <div id="todayWorkout"></div>
+      <button id="btnStartSession">Start Session</button>
+      <div class="note">If nothing is scheduled, ask your coach to assign your weekly plan.</div>
+    </div>
+
+    <div class="card hidden" id="sessionCard">
+      <h2>Coach Mode</h2>
+      <div class="pill" id="coachBadge"></div>
+      <div style="font-size:20px;font-weight:900;margin-top:8px" id="exName"></div>
+      <div class="note" id="setInfo"></div>
+      <hr />
+      <div class="row">
+        <div class="col">
+          <label>Suggested weight</label>
+          <input id="suggested" readonly />
+          <div class="note" id="lastHint"></div>
+        </div>
+        <div class="small">
+          <label>Weight (kg)</label>
+          <input id="inWeight" type="number" step="0.5" />
+        </div>
+        <div class="small">
+          <label>Reps</label>
+          <input id="inReps" type="number" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <label>RPE (optional)</label>
+          <input id="inRpe" type="number" step="0.5" min="1" max="10" placeholder="8" />
+        </div>
+        <div class="col">
+          <label>Notes (optional)</label>
+          <input id="inNotes" placeholder="Sleep / soreness / pain…" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col"><button id="btnLogSet">Log set + rest</button></div>
+        <div class="small"><button class="secondary" id="btnSkip">Skip</button></div>
+        <div class="small"><button class="danger" id="btnEnd">End</button></div>
+      </div>
+
+      <div class="timer" id="timer">00:00</div>
+      <div class="note" style="text-align:center" id="timerMeta"></div>
+    </div>
+
+    <div class="card">
+      <h2>History</h2>
+      <table>
+        <thead><tr><th>Date</th><th>Workout</th><th>Exercise</th><th>Weight</th><th>Reps</th><th>RPE</th></tr></thead>
+        <tbody id="athleteHistory"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/** ======= CONFIG: PASTE YOUR KEYS ======= **/
+const SUPABASE_URL = "PASTE_SUPABASE_URL_HERE";
+const SUPABASE_ANON = "PASTE_SUPABASE_ANON_KEY_HERE";
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+/** ======= 18 workouts library (same as your HTML) ======= **/
+function build18Workouts(){
+  const BASE = {
+    W1: [
+      {exercise:"Back Squat", sets:4, reps:"5", rest:150, note:""},
+      {exercise:"Romanian Deadlift (RDL)", sets:3, reps:"6-8", rest:120, note:"3s eccentric"},
+      {exercise:"Bulgarian Split Squat", sets:3, reps:"8/leg", rest:90, note:""},
+      {exercise:"Hamstring Curl", sets:3, reps:"10-12", rest:75, note:""},
+      {exercise:"Standing Calf Raise", sets:4, reps:"8-10", rest:75, note:"pause top"},
+      {exercise:"Pallof Press", sets:3, reps:"12/side", rest:50, note:""}
+    ],
+    W2: [
+      {exercise:"Pull-ups / Lat Pulldown", sets:4, reps:"6-8", rest:105, note:""},
+      {exercise:"Dumbbell Bench Press", sets:3, reps:"8", rest:105, note:""},
+      {exercise:"Single-Arm Row (DB/Cable)", sets:3, reps:"8/side", rest:85, note:""},
+      {exercise:"Landmine Press", sets:3, reps:"8/side", rest:85, note:""},
+      {exercise:"Copenhagen Plank", sets:3, reps:"20-30", rest:55, note:"seconds"},
+      {exercise:"Dead Bug", sets:3, reps:"10", rest:55, note:"slow"},
+      {exercise:"Sled Push (optional)", sets:4, reps:"20", rest:75, note:"meters, light"}
+    ],
+    W3: [
+      {exercise:"Trap Bar Deadlift", sets:4, reps:"4", rest:150, note:"explosive"},
+      {exercise:"Box Step Ups (knee drive)", sets:3, reps:"8/leg", rest:85, note:""},
+      {exercise:"Walking Lunges", sets:3, reps:"10/leg", rest:85, note:""},
+      {exercise:"Kettlebell Swings", sets:3, reps:"15", rest:75, note:""},
+      {exercise:"Seated Calf Raise (soleus)", sets:4, reps:"12-15", rest:75, note:""},
+      {exercise:"Farmer Carry", sets:3, reps:"30-40", rest:90, note:"meters, heavy"}
+    ]
+  };
+
+  const clone = (arr)=>arr.map(x=>({...x}));
+  const setSets=(arr,name,sets)=>{const it=arr.find(x=>x.exercise===name); if(it) it.sets=sets;}
+  const setReps=(arr,name,reps)=>{const it=arr.find(x=>x.exercise===name); if(it) it.reps=reps;}
+  const bumpRest=(arr,name,delta)=>{const it=arr.find(x=>x.exercise===name); if(it) it.rest=Math.max(0,(it.rest||0)+delta);}
+
+  const out={};
+  for(let v=1; v<=6; v++){
+    const W1=clone(BASE.W1), W2=clone(BASE.W2), W3=clone(BASE.W3);
+    if(v===3){ bumpRest(W1,"Back Squat",30); bumpRest(W3,"Trap Bar Deadlift",30); }
+    if(v===4){ setSets(W1,"Back Squat",3); setSets(W2,"Pull-ups / Lat Pulldown",3); setSets(W3,"Trap Bar Deadlift",3); }
+    if(v===5){ setSets(W1,"Hamstring Curl",4); setSets(W2,"Single-Arm Row (DB/Cable)",4); setSets(W3,"Kettlebell Swings",4); }
+    if(v===6){ setReps(W1,"Back Squat","4"); setReps(W3,"Trap Bar Deadlift","3"); bumpRest(W1,"Back Squat",30); bumpRest(W3,"Trap Bar Deadlift",30); }
+    out[`V${v} • W1 Lower Strength`]=W1;
+    out[`V${v} • W2 Upper + Core`]=W2;
+    out[`V${v} • W3 Lower Power`]=W3;
+  }
+  return out;
+}
+const LIB = build18Workouts();
+
+const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const $ = (id)=>document.getElementById(id);
+
+function show(viewId){
+  ["viewLogin","viewOnboarding","viewCoach","viewAthlete"].forEach(v=>$(v).classList.add("hidden"));
+  $(viewId).classList.remove("hidden");
+}
+
+function todayDow(){
+  return new Date().getDay(); // local browser day
+}
+
+function formatRest(sec){
+  sec=Number(sec)||0;
+  if(sec<=0) return "—";
+  if(sec<60) return sec+"s";
+  const m=Math.floor(sec/60), s=sec%60;
+  return s ? `${m}m ${String(s).padStart(2,"0")}s` : `${m}m`;
+}
+
+function parseTarget(str){
+  const t=String(str||"").trim();
+  const m=t.match(/(\d+)\s*-\s*(\d+)/);
+  if(m) return {type:"range", lo:+m[1], hi:+m[2]};
+  const f=t.match(/(\d+)/);
+  if(f) return {type:"fixed", n:+f[1]};
+  return null;
+}
+function topTarget(str){
+  const p=parseTarget(str);
+  if(!p) return null;
+  return p.type==="range" ? p.hi : p.n;
+}
+
+/** ======= Auth UI ======= **/
+$("btnSendLink").onclick = async ()=>{
+  const email = $("loginEmail").value.trim();
+  if(!email) return;
+  $("loginMsg").textContent = "Sending…";
+  const { error } = await supabase.auth.signInWithOtp({ email });
+  $("loginMsg").textContent = error ? error.message : "Sent ✅ Check your email.";
+};
+
+$("btnLogout").onclick = async ()=>{
+  await supabase.auth.signOut();
+  location.reload();
+};
+
+$("btnExport").onclick = async ()=>{
+  const { data: sess } = await supabase.auth.getSession();
+  if(!sess.session) return alert("Login first.");
+  // Export your own sessions + sets
+  const uid = sess.session.user.id;
+  const { data: sessions } = await supabase.from("sessions").select("*").eq("athlete_id", uid).order("started_at",{ascending:false});
+  const sessionIds = (sessions||[]).map(s=>s.id);
+  let sets=[];
+  if(sessionIds.length){
+    const { data: ss } = await supabase.from("session_sets").select("*").in("session_id", sessionIds);
+    sets = ss||[];
+  }
+  const blob = new Blob([JSON.stringify({exported_at:new Date().toISOString(), sessions, sets}, null, 2)], {type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="ps_export.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+/** ======= Boot: decide view ======= **/
+let currentUser=null;
+let currentProfile=null;
+let templatesCache=[];
+
+async function ensureLibrary(org_id, user_id){
+  const { data: existing } = await supabase
+    .from("workout_templates").select("id").eq("org_id", org_id).eq("is_library", true).limit(1);
+  if(existing && existing.length) return;
+
+  const rows = Object.entries(LIB).map(([name, exercises_json])=>({
+    org_id, created_by:user_id, name, exercises_json, is_library:true
+  }));
+  await supabase.from("workout_templates").insert(rows);
+}
+
+async function loadTemplates(org_id){
+  const { data } = await supabase.from("workout_templates").select("id,name,exercises_json").eq("org_id", org_id).order("name",{ascending:true});
+  templatesCache = data||[];
+  return templatesCache;
+}
+
+async function boot(){
+  const { data: sess } = await supabase.auth.getSession();
+  currentUser = sess.session?.user || null;
+  if(!currentUser){ show("viewLogin"); return; }
+
+  // profile?
+  const { data: prof } = await supabase.from("profiles").select("*").eq("id", currentUser.id).maybeSingle();
+  currentProfile = prof || null;
+
+  if(!currentProfile){
+    show("viewOnboarding");
+    return;
+  }
+
+  if(currentProfile.role==="coach"){
+    show("viewCoach");
+    await ensureLibrary(currentProfile.org_id, currentUser.id);
+    await loadTemplates(currentProfile.org_id);
+    await loadAthletes();
+    await loadCoachSessions();
+  }else{
+    show("viewAthlete");
+    await loadTemplates(currentProfile.org_id);
+    await loadTodayWorkout();
+    await loadAthleteHistory();
+  }
+}
+
+$("btnCreateProfile").onclick = async ()=>{
+  const full_name = $("fullName").value.trim();
+  const role = $("roleSelect").value;
+
+  $("onboardMsg").textContent="Creating…";
+
+  // Create org for each user in MVP (coach will use theirs; athlete will later be “moved” to coach org by coach)
+  const orgName = role==="coach" ? (full_name ? `${full_name}'s Org` : "People & Sports") : "Unassigned";
+  const { data: org, error: orgErr } = await supabase.from("organizations").insert({name:orgName}).select("id").single();
+  if(orgErr){ $("onboardMsg").textContent = orgErr.message; return; }
+
+  const { error: pErr } = await supabase.from("profiles").insert({
+    id: currentUser.id, full_name: full_name||null, role, org_id: org.id
+  });
+  if(pErr){ $("onboardMsg").textContent = pErr.message; return; }
+
+  $("onboardMsg").textContent="Done ✅ Reloading…";
+  setTimeout(()=>location.reload(), 600);
+};
+
+/** ======= Coach dashboard ======= **/
+async function loadAthletes(){
+  // In MVP, athletes must be in same org. We’ll add “Claim athlete by email” next if you want.
+  const { data } = await supabase.from("profiles").select("id,full_name").eq("org_id", currentProfile.org_id).eq("role","athlete").order("full_name",{ascending:true});
+  const sel = $("athleteSelect");
+  sel.innerHTML="";
+  (data||[]).forEach(a=>{
+    const o=document.createElement("option");
+    o.value=a.id;
+    o.textContent=a.full_name || a.id.slice(0,8);
+    sel.appendChild(o);
+  });
+
+  sel.onchange = async ()=>{ await renderScheduleGrid(); };
+
+  await renderScheduleGrid();
+}
+
+function scheduleRowTemplate(dow, template_id){
+  const options = templatesCache.map(t=>`<option value="${t.id}" ${t.id===template_id?"selected":""}>${t.name}</option>`).join("");
+  return `
+    <div class="grid" style="margin:10px 0">
+      <div class="dow"><strong>${DOW[dow]}</strong></div>
+      <div>
+        <select data-dow="${dow}">
+          <option value="">(Rest day / none)</option>
+          ${options}
+        </select>
+      </div>
+    </div>
+  `;
+}
+
+async function renderScheduleGrid(){
+  const athleteId = $("athleteSelect").value;
+  const grid = $("scheduleGrid");
+  if(!athleteId){ grid.innerHTML="<div class='note'>Add an athlete first.</div>"; return; }
+
+  const { data: sched } = await supabase
+    .from("athlete_weekly_schedule")
+    .select("dow,template_id,active")
+    .eq("athlete_id", athleteId);
+
+  const map = {};
+  (sched||[]).forEach(r=>{ map[r.dow]=r; });
+
+  let html = "";
+  for(let d=0; d<=6; d++){
+    html += scheduleRowTemplate(d, map[d]?.template_id || "");
+  }
+  grid.innerHTML = html;
+}
+
+$("btnSaveSchedule").onclick = async ()=>{
+  const athleteId = $("athleteSelect").value;
+  if(!athleteId) return;
+
+  const selects = $("scheduleGrid").querySelectorAll("select[data-dow]");
+  const rows = [];
+  selects.forEach(s=>{
+    const dow = Number(s.getAttribute("data-dow"));
+    const template_id = s.value || null;
+    rows.push({
+      org_id: currentProfile.org_id,
+      athlete_id: athleteId,
+      dow,
+      template_id,
+      active: template_id ? true : false
+    });
+  });
+
+  // Upsert (unique athlete_id + dow)
+  const { error } = await supabase.from("athlete_weekly_schedule").upsert(rows, { onConflict: "athlete_id,dow" });
+  $("coachMsg").textContent = error ? error.message : "Saved ✅";
+};
+
+async function loadCoachSessions(){
+  const { data } = await supabase.from("sessions").select("started_at,workout_name_snapshot,status,athlete_id").eq("org_id", currentProfile.org_id).order("started_at",{ascending:false}).limit(20);
+  const { data: athletes } = await supabase.from("profiles").select("id,full_name").eq("org_id", currentProfile.org_id).eq("role","athlete");
+  const nameMap = {};
+  (athletes||[]).forEach(a=>nameMap[a.id]=a.full_name||a.id.slice(0,8));
+
+  const tb=$("coachSessions"); tb.innerHTML="";
+  (data||[]).forEach(s=>{
+    const d = (s.started_at||"").slice(0,10);
+    tb.innerHTML += `<tr><td>${d}</td><td>${nameMap[s.athlete_id]||""}</td><td>${s.workout_name_snapshot}</td><td>${s.status}</td></tr>`;
+  });
+}
+
+/** ======= Athlete: today workout + coach mode ======= **/
+let todayResolved=null; // {scheduleRow, workoutName, workoutJson}
+let activeSession=null; // session row
+let coachState=null; // {index,set,workoutJson}
+
+async function loadTodayWorkout(){
+  const dow = todayDow();
+  $("todayPill").textContent = `Today: ${DOW[dow]}`;
+
+  const { data: row } = await supabase
+    .from("athlete_weekly_schedule")
+    .select("*")
+    .eq("athlete_id", currentUser.id)
+    .eq("dow", dow)
+    .eq("active", true)
+    .maybeSingle();
+
+  if(!row || !row.template_id){
+    $("todayWorkout").innerHTML = `<div class="note">No workout scheduled for today.</div>`;
+    todayResolved = null;
+    return;
+  }
+
+  let workoutJson = row.override_exercises_json;
+  let workoutName = "";
+
+  if(!workoutJson){
+    const template = templatesCache.find(t=>t.id===row.template_id);
+    workoutJson = template?.exercises_json || [];
+    workoutName = template?.name || "Workout";
+  }else{
+    // try derive name from template
+    const template = templatesCache.find(t=>t.id===row.template_id);
+    workoutName = template?.name || "Workout";
+  }
+
+  todayResolved = { scheduleRow: row, workoutName, workoutJson };
+
+  // Render full workout text
+  let html = `<div class="note" style="margin-top:8px"><strong>${workoutName}</strong></div><ul>`;
+  (workoutJson||[]).forEach(ex=>{
+    html += `<li><strong>${ex.exercise}</strong> — ${ex.sets} × ${ex.reps} • Rest ${formatRest(ex.rest)}</li>`;
+  });
+  html += `</ul>`;
+  $("todayWorkout").innerHTML = html;
+}
+
+$("btnStartSession").onclick = async ()=>{
+  if(!todayResolved) return alert("No workout scheduled today.");
+  // Create session snapshot
+  const payload = {
+    org_id: currentProfile.org_id,
+    athlete_id: currentUser.id,
+    dow: todayResolved.scheduleRow.dow,
+    schedule_id: todayResolved.scheduleRow.id,
+    workout_name_snapshot: todayResolved.workoutName,
+    workout_json_snapshot: todayResolved.workoutJson,
+    status: "in_progress"
+  };
+  const { data, error } = await supabase.from("sessions").insert(payload).select("*").single();
+  if(error) return alert(error.message);
+
+  activeSession = data;
+  coachState = { index:0, set:1, workoutJson: todayResolved.workoutJson, workoutName: todayResolved.workoutName };
+
+  $("sessionCard").classList.remove("hidden");
+  $("coachBadge").textContent = coachState.workoutName;
+  renderCoachMode();
+};
+
+async function lastSetForExercise(exercise){
+  const { data } = await supabase
+    .from("session_sets")
+    .select("weight,reps,created_at,session_id")
+    .order("created_at",{ascending:false})
+    .limit(25);
+  // RLS makes this only your sets. Find first match.
+  const m = (data||[]).find(x=>x.exercise===exercise);
+  return m || null;
+}
+
+async function renderCoachMode(){
+  const ex = coachState.workoutJson[coachState.index];
+  $("exName").textContent = ex.exercise;
+  $("setInfo").textContent = `Set ${coachState.set}/${ex.sets} • Target ${ex.reps} • Rest ${formatRest(ex.rest)}`;
+  $("timerMeta").textContent = `Rest timer: ${formatRest(ex.rest)}`;
+  $("inRpe").value = "";
+  // keep notes
+
+  const last = await lastSetForExercise(ex.exercise);
+  const t = topTarget(ex.reps);
+
+  let suggested = "";
+  let hint = "No history for this exercise yet.";
+  if(last){
+    suggested = Number(last.weight)||"";
+    hint = `Last: ${String(last.created_at).slice(0,10)} • ${last.weight}kg × ${last.reps}`;
+    if(t != null && Number(last.reps) >= t){
+      suggested = (Number(last.weight) + 2.5);
+      hint += ` → hit target ${t}, suggest +2.5kg`;
+    }
+  }
+
+  $("suggested").value = suggested==="" ? "" : String(suggested);
+  $("inWeight").value = suggested==="" ? "" : String(suggested);
+  $("inReps").value = t != null ? String(t) : "";
+  $("lastHint").textContent = hint;
+}
+
+$("btnLogSet").onclick = async ()=>{
+  const ex = coachState.workoutJson[coachState.index];
+  const weight = Number($("inWeight").value);
+  const reps = Number($("inReps").value);
+  const rpe = $("inRpe").value.trim();
+  const notes = $("inNotes").value.trim();
+
+  if(!isFinite(weight) || weight<=0) return alert("Enter weight.");
+  if(!isFinite(reps) || reps<=0) return alert("Enter reps.");
+
+  const row = {
+    session_id: activeSession.id,
+    exercise: ex.exercise,
+    set_number: coachState.set,
+    weight: Math.round(weight*10)/10,
+    reps: Math.round(reps),
+    rpe: rpe ? Number(rpe) : null,
+    rest_sec: ex.rest || null,
+    notes: notes || null
+  };
+
+  const { error } = await supabase.from("session_sets").insert(row);
+  if(error) return alert(error.message);
+
+  startRest(ex.rest||0);
+
+  if(coachState.set < ex.sets){
+    coachState.set++;
+  }else{
+    coachState.index++;
+    coachState.set=1;
+    if(coachState.index >= coachState.workoutJson.length){
+      await supabase.from("sessions").update({status:"completed", completed_at:new Date().toISOString()}).eq("id", activeSession.id);
+      alert("Session complete ✅");
+      $("sessionCard").classList.add("hidden");
+      stopTimer();
+      await loadAthleteHistory();
+      await loadTodayWorkout();
+      return;
+    }
+  }
+  await renderCoachMode();
+  await loadAthleteHistory();
+};
+
+$("btnSkip").onclick = async ()=>{
+  coachState.index++;
+  coachState.set=1;
+  if(coachState.index >= coachState.workoutJson.length){
+    await supabase.from("sessions").update({status:"completed", completed_at:new Date().toISOString()}).eq("id", activeSession.id);
+    alert("Session complete ✅");
+    $("sessionCard").classList.add("hidden");
+    stopTimer();
+    await loadAthleteHistory();
+    return;
+  }
+  await renderCoachMode();
+};
+
+$("btnEnd").onclick = async ()=>{
+  if(activeSession){
+    await supabase.from("sessions").update({status:"abandoned", completed_at:new Date().toISOString()}).eq("id", activeSession.id);
+  }
+  $("sessionCard").classList.add("hidden");
+  stopTimer();
+};
+
+async function loadAthleteHistory(){
+  const { data: sessions } = await supabase.from("sessions")
+    .select("id,started_at,workout_name_snapshot,status")
+    .eq("athlete_id", currentUser.id)
+    .order("started_at",{ascending:false})
+    .limit(10);
+
+  const ids = (sessions||[]).map(s=>s.id);
+  let sets=[];
+  if(ids.length){
+    const { data } = await supabase.from("session_sets").select("*").in("session_id", ids).order("created_at",{ascending:false}).limit(80);
+    sets = data||[];
+  }
+
+  const tb=$("athleteHistory"); tb.innerHTML="";
+  (sets||[]).slice(0,60).forEach(s=>{
+    const d = String(s.created_at||"").slice(0,10);
+    tb.innerHTML += `<tr><td>${d}</td><td>${todayResolved?.workoutName || ""}</td><td><strong>${s.exercise}</strong></td><td>${s.weight}</td><td>${s.reps}</td><td>${s.rpe??""}</td></tr>`;
+  });
+}
+
+/** ======= Rest timer ======= **/
+let tmr=null, rem=0;
+function stopTimer(){ if(tmr){clearInterval(tmr); tmr=null;} }
+function updateTimer(){
+  const m=String(Math.floor(rem/60)).padStart(2,"0");
+  const s=String(rem%60).padStart(2,"0");
+  $("timer").textContent = `${m}:${s}`;
+}
+function startRest(sec){
+  stopTimer();
+  rem = Math.max(0, Math.floor(Number(sec)||0));
+  updateTimer();
+  if(rem<=0) return;
+  tmr=setInterval(()=>{
+    rem--; updateTimer();
+    if(rem<=0){
+      stopTimer();
+      try{ navigator.vibrate && navigator.vibrate([150,80,150]); }catch(e){}
+      alert("Rest done ✅");
+    }
+  },1000);
+}
+
+boot();
+</script>
+</body>
+</html>
