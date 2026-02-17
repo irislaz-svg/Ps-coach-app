@@ -63,7 +63,7 @@
     <div class="note">Enter your email. You’ll get a login link.</div>
     <label>Email</label>
     <input id="loginEmail" placeholder="you@email.com" />
-    <button id="btnSendLink">Send magic link</button>
+   <button id="btnSendLink" onclick="sendMagicLink()">Send magic link</button>
     <div class="note" id="loginMsg"></div>
   </div>
 
@@ -178,6 +178,32 @@ const SUPABASE_URL = "https://hvqewywwdaqlkipopydm.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh2cWV3eXd3ZGFxbGtpcG9weWRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNTk1NjcsImV4cCI6MjA4NjgzNTU2N30.K8xw65baxFVmdua9K0aOGG0SY-VH9Z33ZKsYIIwH_8U";
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
+  async function sendMagicLink() {
+  const emailEl = document.getElementById("loginEmail");
+  const msgEl = document.getElementById("loginMsg");
+
+  const email = (emailEl?.value || "").trim();
+  if (!email) {
+    if (msgEl) msgEl.textContent = "Please enter an email.";
+    return;
+  }
+
+  if (msgEl) msgEl.textContent = "Sending…";
+
+  try {
+    const { error } = await supabase.auth.signInWithOtp({ email });
+    if (error) {
+      if (msgEl) msgEl.textContent = "Error: " + error.message;
+    } else {
+      if (msgEl) msgEl.textContent = "Sent ✅ Check your email (also Spam/Promotions).";
+    }
+  } catch (e) {
+    console.error(e);
+    if (msgEl) msgEl.textContent = "App error. Open Console (F12) and check errors.";
+  }
+}
+
+
 /** ======= 18 workouts library (same as your HTML) ======= **/
 function build18Workouts(){
   const BASE = {
@@ -263,7 +289,7 @@ function topTarget(str){
 }
 
 /** ======= Auth UI ======= **/
-$("btnSendLink").onclick = async ()=>{
+
   const email = $("loginEmail").value.trim();
   if(!email) return;
   $("loginMsg").textContent = "Sending…";
