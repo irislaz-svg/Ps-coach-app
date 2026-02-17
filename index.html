@@ -282,12 +282,8 @@ const LIB = build18Workouts();
  *  Supabase client (global)
  *  ========================= */
 let supabase;
-try{
-  if(!SUPABASE_URL.startsWith("https://")) throw new Error("SUPABASE_URL must start with https://");
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
-}catch(e){
-  console.error(e);
-  alert("Supabase config error. Check URL/anon key.");
+supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
 }
 
 /** =========================
