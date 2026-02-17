@@ -191,7 +191,8 @@
 /* ====== CONFIG: REPLACE KEYS ====== */
 const SUPABASE_URL  = "https://hvqewywwdaqlkipopydm.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh2cWV3eXd3ZGFxbGtpcG9weWRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNTk1NjcsImV4cCI6MjA4NjgzNTU2N30.K8xw65baxFVmdua9K0aOGG0SY-VH9Z33ZKsYIIwH_8U";
-
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+  
 /* ====== HELPERS ====== */
 const $ = (id)=>document.getElementById(id);
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
