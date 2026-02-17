@@ -713,20 +713,23 @@ async function loadAthleteHistory(){
 }
 
 /* ====== Wire UI ====== */
-document.addEventListener("DOMContentLoaded", async ()=>{
-  $("btnLogout").addEventListener("click", doLogout);
-  $("btnExport").addEventListener("click", exportMyData);
+document.getElementById("btnSignUp").addEventListener("click", async () => {
+  const email = (document.getElementById("loginEmail").value || "").trim();
+  const password = (document.getElementById("loginPassword").value || "").trim();
+  const msg = document.getElementById("loginMsg");
 
-  $("btnSignUp").addEventListener("click", async ()=>{
-    const email=($("loginEmail").value||"").trim();
-    const password=($("loginPassword").value||"").trim();
-    $("loginMsg").textContent="Creating account…";
-    if(!email || !password){ $("loginMsg").textContent="Enter email + password."; return; }
+  msg.textContent = "Creating account…";
 
-    const { error } = await sb.auth.signUp({ email, password });
-    if(error){ console.error(error); $("loginMsg").textContent="Error: "+error.message; return; }
-    $("loginMsg").textContent="Account created ✅ Now click Sign in.";
-  });
+  try {
+    const { error } = await window.sb.auth.signUp({ email, password });
+    if (error) msg.textContent = "Error: " + error.message;
+    else msg.textContent = "Account created ✅ Now click Sign in.";
+  } catch (e) {
+    console.error(e);
+    msg.textContent = "JS error: " + (e?.message || e);
+  }
+});
+
 
   $("btnSignIn").addEventListener("click", async ()=>{
     const email=($("loginEmail").value||"").trim();
