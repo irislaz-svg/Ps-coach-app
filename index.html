@@ -11,7 +11,7 @@
     }
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--text);
-      font-family:system-ui,-apple-system,"SF Pro Rounded",Segoe UI,Roboto,Arial;}
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial;}
     header{padding:16px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #222;}
     .brand{display:flex;flex-direction:column}
     .title{font-weight:900;font-size:18px;line-height:1.1}
@@ -38,11 +38,11 @@
     hr{border:0;border-top:1px solid var(--line);margin:12px 0}
     .timer{font-size:28px;font-weight:950;text-align:center;margin-top:10px}
     .right{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
-    a{color:var(--accent)}
     .grid{display:grid;grid-template-columns:140px 1fr;gap:10px;align-items:center}
     .dow{color:var(--muted);font-size:13px}
   </style>
 </head>
+
 <body>
 <header>
   <div class="brand">
@@ -58,33 +58,38 @@
 <main>
 
   <!-- LOGIN -->
- <label>Email</label>
-<input id="loginEmail" placeholder="you@email.com" />
+  <div class="card" id="viewLogin">
+    <h2>Login</h2>
+    <div class="note">Email + password (no magic-link emails).</div>
 
-<label>Password</label>
-<input id="loginPassword" type="password" placeholder="Choose a password" />
+    <label>Email</label>
+    <input id="loginEmail" placeholder="you@email.com" />
 
-<div class="row">
-  <div class="col">
-    <button id="btnSignUp">Sign up</button>
-<button id="btnSignIn" class="secondary">Sign in</button>
+    <label>Password</label>
+    <input id="loginPassword" type="password" placeholder="Choose a password" />
 
+    <div class="row">
+      <div class="col"><button id="btnSignUp">Sign up</button></div>
+      <div class="col"><button class="secondary" id="btnSignIn">Sign in</button></div>
+    </div>
+
+    <div class="note" id="loginMsg"></div>
   </div>
-</div>
-
-<div class="note" id="loginMsg"></div>
-
 
   <!-- ONBOARDING -->
   <div class="card hidden" id="viewOnboarding">
     <h2>Set up your account</h2>
+    <div class="note">Choose coach/athlete (stored in <code>profiles.role</code>).</div>
+
     <label>Full name</label>
     <input id="fullName" placeholder="Lior" />
+
     <label>Role</label>
     <select id="roleSelect">
       <option value="coach">Coach</option>
       <option value="athlete">Athlete</option>
     </select>
+
     <button id="btnCreateProfile">Continue</button>
     <div class="note" id="onboardMsg"></div>
   </div>
@@ -96,7 +101,7 @@
       <div class="note">Pick an athlete to set the weekly schedule (Sun–Sat).</div>
       <label>Athlete</label>
       <select id="athleteSelect"></select>
-      <div class="note">If you don’t see athletes yet, they need to sign up once so they appear here.</div>
+      <div class="note" id="coachTopMsg"></div>
     </div>
 
     <div class="card">
@@ -123,7 +128,7 @@
       <div class="pill" id="todayPill"></div>
       <div id="todayWorkout"></div>
       <button id="btnStartSession">Start Session</button>
-      <div class="note">If nothing is scheduled, ask your coach to assign your weekly plan.</div>
+      <div class="note" id="athleteTodayMsg"></div>
     </div>
 
     <div class="card hidden" id="sessionCard">
@@ -132,6 +137,7 @@
       <div style="font-size:20px;font-weight:900;margin-top:8px" id="exName"></div>
       <div class="note" id="setInfo"></div>
       <hr />
+
       <div class="row">
         <div class="col">
           <label>Suggested weight</label>
@@ -147,6 +153,7 @@
           <input id="inReps" type="number" />
         </div>
       </div>
+
       <div class="row">
         <div class="col">
           <label>RPE (optional)</label>
@@ -181,111 +188,47 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-/** ======= CONFIG: PASTE YOUR KEYS ======= **/
-const SUPABASE_URL = "https://hvqewywwdaqlkipopydm.supabase.co";
+/** =========================
+ *  CONFIG (REPLACE THESE)
+ *  ========================= */
+const SUPABASE_URL  = "https://hvqewywwdaqlkipopydm.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh2cWV3eXd3ZGFxbGtpcG9weWRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNTk1NjcsImV4cCI6MjA4NjgzNTU2N30.K8xw65baxFVmdua9K0aOGG0SY-VH9Z33ZKsYIIwH_8U";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
+/** =========================
+ *  Helpers
+ *  ========================= */
+const $ = (id)=>document.getElementById(id);
+const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
-document.addEventListener("DOMContentLoaded", () => {
+function show(viewId){
+  ["viewLogin","viewOnboarding","viewCoach","viewAthlete"].forEach(v=>$(v).classList.add("hidden"));
+  $(viewId).classList.remove("hidden");
+}
+function todayDow(){ return new Date().getDay(); }
+function formatRest(sec){
+  sec=Number(sec)||0;
+  if(sec<=0) return "—";
+  if(sec<60) return sec+"s";
+  const m=Math.floor(sec/60), s=sec%60;
+  return s ? `${m}m ${String(s).padStart(2,"0")}s` : `${m}m`;
+}
+function parseTarget(str){
+  const t=String(str||"").trim();
+  const m=t.match(/(\d+)\s*-\s*(\d+)/);
+  if(m) return {type:"range", lo:+m[1], hi:+m[2]};
+  const f=t.match(/(\d+)/);
+  if(f) return {type:"fixed", n:+f[1]};
+  return null;
+}
+function topTarget(str){
+  const p=parseTarget(str);
+  if(!p) return null;
+  return p.type==="range" ? p.hi : p.n;
+}
 
-  const signUpBtn = document.getElementById("btnSignUp");
-  const signInBtn = document.getElementById("btnSignIn");
-
-  signUpBtn.addEventListener("click", async () => {
-    const email = document.getElementById("loginEmail").value.trim();
-    const password = document.getElementById("loginPassword").value.trim();
-    const msgEl = document.getElementById("loginMsg");
-
-    msgEl.textContent = "Creating account…";
-
-    if (!email || !password) {
-      msgEl.textContent = "Enter email + password.";
-      return;
-    }
-
-    const { error } = await supabase.auth.signUp({ email, password });
-
-    if (error) {
-      msgEl.textContent = "Error: " + error.message;
-    } else {
-      msgEl.textContent = "Account created ✅ Now click Sign in.";
-    }
-  });
-
-  signInBtn.addEventListener("click", async () => {
-    const email = document.getElementById("loginEmail").value.trim();
-    const password = document.getElementById("loginPassword").value.trim();
-    const msgEl = document.getElementById("loginMsg");
-
-    msgEl.textContent = "Signing in…";
-
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      msgEl.textContent = "Error: " + error.message;
-    } else {
-      location.reload();
-    }
-  });
-
-});
-
-
-  window.signUp = async function () {
-  const email = (document.getElementById("loginEmail")?.value || "").trim();
-  const password = (document.getElementById("loginPassword")?.value || "").trim();
-  const msgEl = document.getElementById("loginMsg");
-
-  if (msgEl) msgEl.textContent = "Creating account…";
-
-  if (!email || !password) {
-    if (msgEl) msgEl.textContent = "Enter email + password.";
-    return;
-  }
-
-  try {
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) {
-      if (msgEl) msgEl.textContent = "Error: " + error.message;
-    } else {
-      if (msgEl) msgEl.textContent = "Account created ✅ Now click Sign in.";
-    }
-  } catch (e) {
-    console.error(e);
-    if (msgEl) msgEl.textContent = "App error. Open Console (F12).";
-  }
-};
-
-window.signIn = async function () {
-  const email = (document.getElementById("loginEmail")?.value || "").trim();
-  const password = (document.getElementById("loginPassword")?.value || "").trim();
-  const msgEl = document.getElementById("loginMsg");
-
-  if (msgEl) msgEl.textContent = "Signing in…";
-
-  if (!email || !password) {
-    if (msgEl) msgEl.textContent = "Enter email + password.";
-    return;
-  }
-
-  try {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      if (msgEl) msgEl.textContent = "Error: " + error.message;
-    } else {
-      if (msgEl) msgEl.textContent = "Signed in ✅";
-      setTimeout(() => location.reload(), 300);
-    }
-  } catch (e) {
-    console.error(e);
-    if (msgEl) msgEl.textContent = "App error. Open Console (F12).";
-  }
-};
-
-
-
-/** ======= 18 workouts library (same as your HTML) ======= **/
+/** =========================
+ *  18-workout library
+ *  ========================= */
 function build18Workouts(){
   const BASE = {
     W1: [
@@ -335,117 +278,121 @@ function build18Workouts(){
 }
 const LIB = build18Workouts();
 
-const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-const $ = (id)=>document.getElementById(id);
-
-function show(viewId){
-  ["viewLogin","viewOnboarding","viewCoach","viewAthlete"].forEach(v=>$(v).classList.add("hidden"));
-  $(viewId).classList.remove("hidden");
+/** =========================
+ *  Supabase client (global)
+ *  ========================= */
+let supabase;
+try{
+  if(!SUPABASE_URL.startsWith("https://")) throw new Error("SUPABASE_URL must start with https://");
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+}catch(e){
+  console.error(e);
+  alert("Supabase config error. Check URL/anon key.");
 }
 
-function todayDow(){
-  return new Date().getDay(); // local browser day
-}
+/** =========================
+ *  App state
+ *  ========================= */
+let currentUser=null;
+let currentProfile=null;
+let templatesCache=[];
 
-function formatRest(sec){
-  sec=Number(sec)||0;
-  if(sec<=0) return "—";
-  if(sec<60) return sec+"s";
-  const m=Math.floor(sec/60), s=sec%60;
-  return s ? `${m}m ${String(s).padStart(2,"0")}s` : `${m}m`;
-}
+let todayResolved=null;    // {scheduleRow, workoutName, workoutJson}
+let activeSession=null;    // sessions row
+let coachState=null;       // {index,set,workoutJson,workoutName}
 
-function parseTarget(str){
-  const t=String(str||"").trim();
-  const m=t.match(/(\d+)\s*-\s*(\d+)/);
-  if(m) return {type:"range", lo:+m[1], hi:+m[2]};
-  const f=t.match(/(\d+)/);
-  if(f) return {type:"fixed", n:+f[1]};
-  return null;
-}
-function topTarget(str){
-  const p=parseTarget(str);
-  if(!p) return null;
-  return p.type==="range" ? p.hi : p.n;
-}
+let tmr=null, rem=0;
 
-/** ======= Auth UI ======= **/
-
-  const email = $("loginEmail").value.trim();
-  if(!email) return;
-  $("loginMsg").textContent = "Sending…";
-  const { error } = await supabase.auth.signInWithOtp({ email });
-  $("loginMsg").textContent = error ? error.message : "Sent ✅ Check your email.";
-};
-
-$("btnLogout").onclick = async ()=>{
+/** =========================
+ *  Auth + Export
+ *  ========================= */
+async function doLogout(){
   await supabase.auth.signOut();
   location.reload();
-};
-
-$("btnExport").onclick = async ()=>{
+}
+async function exportMyData(){
   const { data: sess } = await supabase.auth.getSession();
   if(!sess.session) return alert("Login first.");
-  // Export your own sessions + sets
   const uid = sess.session.user.id;
-  const { data: sessions } = await supabase.from("sessions").select("*").eq("athlete_id", uid).order("started_at",{ascending:false});
-  const sessionIds = (sessions||[]).map(s=>s.id);
+
+  const { data: sessions, error: sErr } = await supabase
+    .from("sessions").select("*").eq("athlete_id", uid).order("started_at",{ascending:false});
+  if(sErr) return alert(sErr.message);
+
+  const ids = (sessions||[]).map(s=>s.id);
   let sets=[];
-  if(sessionIds.length){
-    const { data: ss } = await supabase.from("session_sets").select("*").in("session_id", sessionIds);
+  if(ids.length){
+    const { data: ss, error: setErr } = await supabase.from("session_sets").select("*").in("session_id", ids);
+    if(setErr) return alert(setErr.message);
     sets = ss||[];
   }
+
   const blob = new Blob([JSON.stringify({exported_at:new Date().toISOString(), sessions, sets}, null, 2)], {type:"application/json"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
   a.download="ps_export.json";
   a.click();
   URL.revokeObjectURL(a.href);
-};
+}
 
-/** ======= Boot: decide view ======= **/
-let currentUser=null;
-let currentProfile=null;
-let templatesCache=[];
-
+/** =========================
+ *  DB helpers
+ *  ========================= */
 async function ensureLibrary(org_id, user_id){
-  const { data: existing } = await supabase
+  const { data: existing, error } = await supabase
     .from("workout_templates").select("id").eq("org_id", org_id).eq("is_library", true).limit(1);
+  if(error) throw error;
   if(existing && existing.length) return;
 
   const rows = Object.entries(LIB).map(([name, exercises_json])=>({
     org_id, created_by:user_id, name, exercises_json, is_library:true
   }));
-  await supabase.from("workout_templates").insert(rows);
+  const { error: insErr } = await supabase.from("workout_templates").insert(rows);
+  if(insErr) throw insErr;
 }
 
 async function loadTemplates(org_id){
-  const { data } = await supabase.from("workout_templates").select("id,name,exercises_json").eq("org_id", org_id).order("name",{ascending:true});
+  const { data, error } = await supabase
+    .from("workout_templates")
+    .select("id,name,exercises_json")
+    .eq("org_id", org_id)
+    .order("name",{ascending:true});
+  if(error) throw error;
   templatesCache = data||[];
-  return templatesCache;
 }
 
+async function getMyProfile(){
+  const { data, error } = await supabase.from("profiles").select("*").eq("id", currentUser.id).maybeSingle();
+  if(error) throw error;
+  return data || null;
+}
+
+/** =========================
+ *  Boot / Routing
+ *  ========================= */
 async function boot(){
   const { data: sess } = await supabase.auth.getSession();
   currentUser = sess.session?.user || null;
-  if(!currentUser){ show("viewLogin"); return; }
 
-  // profile?
-  const { data: prof } = await supabase.from("profiles").select("*").eq("id", currentUser.id).maybeSingle();
-  currentProfile = prof || null;
+  if(!currentUser){
+    show("viewLogin");
+    return;
+  }
+
+  currentProfile = await getMyProfile();
 
   if(!currentProfile){
     show("viewOnboarding");
     return;
   }
 
-  if(currentProfile.role==="coach"){
+  if(currentProfile.role === "coach"){
     show("viewCoach");
     await ensureLibrary(currentProfile.org_id, currentUser.id);
     await loadTemplates(currentProfile.org_id);
     await loadAthletes();
     await loadCoachSessions();
-  }else{
+  } else {
     show("viewAthlete");
     await loadTemplates(currentProfile.org_id);
     await loadTodayWorkout();
@@ -453,41 +400,86 @@ async function boot(){
   }
 }
 
-$("btnCreateProfile").onclick = async ()=>{
-  const full_name = $("fullName").value.trim();
+/** =========================
+ *  Onboarding (create org/profile)
+ *  ========================= */
+async function createProfileFromForm(){
+  const full_name = ($("fullName").value || "").trim();
   const role = $("roleSelect").value;
 
-  $("onboardMsg").textContent="Creating…";
+  $("onboardMsg").textContent = "Creating…";
 
-  // Create org for each user in MVP (coach will use theirs; athlete will later be “moved” to coach org by coach)
-  const orgName = role==="coach" ? (full_name ? `${full_name}'s Org` : "People & Sports") : "Unassigned";
-  const { data: org, error: orgErr } = await supabase.from("organizations").insert({name:orgName}).select("id").single();
-  if(orgErr){ $("onboardMsg").textContent = orgErr.message; return; }
+  // Create an org for coaches (MVP). Athletes get "Unassigned".
+  const orgName = (role === "coach")
+    ? (full_name ? `${full_name}'s Org` : "People & Sports")
+    : "Unassigned";
+
+  // organizations insert requires a policy (you added org_insert_auth)
+  const { data: org, error: orgErr } = await supabase
+    .from("organizations")
+    .insert({ name: orgName })
+    .select("id")
+    .single();
+
+  if(orgErr){
+    console.error(orgErr);
+    $("onboardMsg").textContent = "Error: " + orgErr.message;
+    return;
+  }
 
   const { error: pErr } = await supabase.from("profiles").insert({
-    id: currentUser.id, full_name: full_name||null, role, org_id: org.id
+    id: currentUser.id,
+    full_name: full_name || null,
+    role,
+    org_id: org.id
   });
-  if(pErr){ $("onboardMsg").textContent = pErr.message; return; }
 
-  $("onboardMsg").textContent="Done ✅ Reloading…";
-  setTimeout(()=>location.reload(), 600);
-};
+  if(pErr){
+    console.error(pErr);
+    $("onboardMsg").textContent = "Error: " + pErr.message;
+    return;
+  }
 
-/** ======= Coach dashboard ======= **/
+  $("onboardMsg").textContent = "Done ✅ Reloading…";
+  setTimeout(()=>location.reload(), 500);
+}
+
+/** =========================
+ *  Coach dashboard
+ *  ========================= */
 async function loadAthletes(){
-  // In MVP, athletes must be in same org. We’ll add “Claim athlete by email” next if you want.
-  const { data } = await supabase.from("profiles").select("id,full_name").eq("org_id", currentProfile.org_id).eq("role","athlete").order("full_name",{ascending:true});
   const sel = $("athleteSelect");
-  sel.innerHTML="";
-  (data||[]).forEach(a=>{
+  sel.innerHTML = "";
+  $("coachTopMsg").textContent = "";
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id,full_name")
+    .eq("org_id", currentProfile.org_id)
+    .eq("role", "athlete")
+    .order("full_name", {ascending:true});
+
+  if(error){
+    console.error(error);
+    $("coachTopMsg").textContent = "Error loading athletes: " + error.message;
+    return;
+  }
+
+  if(!data || !data.length){
+    $("coachTopMsg").textContent = "No athletes in your org yet. (Next step: we’ll add 'claim athlete by email'.)";
+    // still render empty grid
+    await renderScheduleGrid();
+    return;
+  }
+
+  for(const a of data){
     const o=document.createElement("option");
     o.value=a.id;
     o.textContent=a.full_name || a.id.slice(0,8);
     sel.appendChild(o);
-  });
+  }
 
   sel.onchange = async ()=>{ await renderScheduleGrid(); };
-
   await renderScheduleGrid();
 }
 
@@ -509,12 +501,22 @@ function scheduleRowTemplate(dow, template_id){
 async function renderScheduleGrid(){
   const athleteId = $("athleteSelect").value;
   const grid = $("scheduleGrid");
-  if(!athleteId){ grid.innerHTML="<div class='note'>Add an athlete first.</div>"; return; }
 
-  const { data: sched } = await supabase
+  if(!athleteId){
+    grid.innerHTML = "<div class='note'>Select an athlete to edit schedule.</div>";
+    return;
+  }
+
+  const { data: sched, error } = await supabase
     .from("athlete_weekly_schedule")
     .select("dow,template_id,active")
     .eq("athlete_id", athleteId);
+
+  if(error){
+    console.error(error);
+    grid.innerHTML = "<div class='note'>Error loading schedule: "+error.message+"</div>";
+    return;
+  }
 
   const map = {};
   (sched||[]).forEach(r=>{ map[r.dow]=r; });
@@ -526,7 +528,7 @@ async function renderScheduleGrid(){
   grid.innerHTML = html;
 }
 
-$("btnSaveSchedule").onclick = async ()=>{
+async function saveSchedule(){
   const athleteId = $("athleteSelect").value;
   if(!athleteId) return;
 
@@ -540,18 +542,36 @@ $("btnSaveSchedule").onclick = async ()=>{
       athlete_id: athleteId,
       dow,
       template_id,
-      active: template_id ? true : false
+      active: !!template_id
     });
   });
 
-  // Upsert (unique athlete_id + dow)
-  const { error } = await supabase.from("athlete_weekly_schedule").upsert(rows, { onConflict: "athlete_id,dow" });
-  $("coachMsg").textContent = error ? error.message : "Saved ✅";
-};
+  const { error } = await supabase
+    .from("athlete_weekly_schedule")
+    .upsert(rows, { onConflict: "athlete_id,dow" });
+
+  $("coachMsg").textContent = error ? ("Error: " + error.message) : "Saved ✅";
+}
 
 async function loadCoachSessions(){
-  const { data } = await supabase.from("sessions").select("started_at,workout_name_snapshot,status,athlete_id").eq("org_id", currentProfile.org_id).order("started_at",{ascending:false}).limit(20);
-  const { data: athletes } = await supabase.from("profiles").select("id,full_name").eq("org_id", currentProfile.org_id).eq("role","athlete");
+  const { data, error } = await supabase
+    .from("sessions")
+    .select("started_at,workout_name_snapshot,status,athlete_id")
+    .eq("org_id", currentProfile.org_id)
+    .order("started_at",{ascending:false})
+    .limit(20);
+
+  if(error){
+    console.error(error);
+    return;
+  }
+
+  const { data: athletes } = await supabase
+    .from("profiles")
+    .select("id,full_name")
+    .eq("org_id", currentProfile.org_id)
+    .eq("role","athlete");
+
   const nameMap = {};
   (athletes||[]).forEach(a=>nameMap[a.id]=a.full_name||a.id.slice(0,8));
 
@@ -562,22 +582,28 @@ async function loadCoachSessions(){
   });
 }
 
-/** ======= Athlete: today workout + coach mode ======= **/
-let todayResolved=null; // {scheduleRow, workoutName, workoutJson}
-let activeSession=null; // session row
-let coachState=null; // {index,set,workoutJson}
-
+/** =========================
+ *  Athlete: today workout + coach mode
+ *  ========================= */
 async function loadTodayWorkout(){
   const dow = todayDow();
   $("todayPill").textContent = `Today: ${DOW[dow]}`;
+  $("athleteTodayMsg").textContent = "";
 
-  const { data: row } = await supabase
+  const { data: row, error } = await supabase
     .from("athlete_weekly_schedule")
     .select("*")
     .eq("athlete_id", currentUser.id)
     .eq("dow", dow)
     .eq("active", true)
     .maybeSingle();
+
+  if(error){
+    console.error(error);
+    $("todayWorkout").innerHTML = `<div class="note">Error: ${error.message}</div>`;
+    todayResolved = null;
+    return;
+  }
 
   if(!row || !row.template_id){
     $("todayWorkout").innerHTML = `<div class="note">No workout scheduled for today.</div>`;
@@ -593,14 +619,12 @@ async function loadTodayWorkout(){
     workoutJson = template?.exercises_json || [];
     workoutName = template?.name || "Workout";
   }else{
-    // try derive name from template
     const template = templatesCache.find(t=>t.id===row.template_id);
     workoutName = template?.name || "Workout";
   }
 
   todayResolved = { scheduleRow: row, workoutName, workoutJson };
 
-  // Render full workout text
   let html = `<div class="note" style="margin-top:8px"><strong>${workoutName}</strong></div><ul>`;
   (workoutJson||[]).forEach(ex=>{
     html += `<li><strong>${ex.exercise}</strong> — ${ex.sets} × ${ex.reps} • Rest ${formatRest(ex.rest)}</li>`;
@@ -609,9 +633,12 @@ async function loadTodayWorkout(){
   $("todayWorkout").innerHTML = html;
 }
 
-$("btnStartSession").onclick = async ()=>{
-  if(!todayResolved) return alert("No workout scheduled today.");
-  // Create session snapshot
+async function startSession(){
+  if(!todayResolved){
+    $("athleteTodayMsg").textContent = "No workout scheduled today.";
+    return;
+  }
+
   const payload = {
     org_id: currentProfile.org_id,
     athlete_id: currentUser.id,
@@ -621,26 +648,31 @@ $("btnStartSession").onclick = async ()=>{
     workout_json_snapshot: todayResolved.workoutJson,
     status: "in_progress"
   };
+
   const { data, error } = await supabase.from("sessions").insert(payload).select("*").single();
-  if(error) return alert(error.message);
+  if(error){
+    console.error(error);
+    alert("Error starting session: " + error.message);
+    return;
+  }
 
   activeSession = data;
   coachState = { index:0, set:1, workoutJson: todayResolved.workoutJson, workoutName: todayResolved.workoutName };
 
   $("sessionCard").classList.remove("hidden");
   $("coachBadge").textContent = coachState.workoutName;
-  renderCoachMode();
-};
+  await renderCoachMode();
+}
 
 async function lastSetForExercise(exercise){
-  const { data } = await supabase
+  // RLS ensures athlete only sees own sets
+  const { data, error } = await supabase
     .from("session_sets")
-    .select("weight,reps,created_at,session_id")
+    .select("weight,reps,created_at,session_id,exercise")
     .order("created_at",{ascending:false})
-    .limit(25);
-  // RLS makes this only your sets. Find first match.
-  const m = (data||[]).find(x=>x.exercise===exercise);
-  return m || null;
+    .limit(50);
+  if(error) return null;
+  return (data||[]).find(x=>x.exercise===exercise) || null;
 }
 
 async function renderCoachMode(){
@@ -648,8 +680,9 @@ async function renderCoachMode(){
   $("exName").textContent = ex.exercise;
   $("setInfo").textContent = `Set ${coachState.set}/${ex.sets} • Target ${ex.reps} • Rest ${formatRest(ex.rest)}`;
   $("timerMeta").textContent = `Rest timer: ${formatRest(ex.rest)}`;
+
   $("inRpe").value = "";
-  // keep notes
+  // keep notes as user likes
 
   const last = await lastSetForExercise(ex.exercise);
   const t = topTarget(ex.reps);
@@ -671,7 +704,7 @@ async function renderCoachMode(){
   $("lastHint").textContent = hint;
 }
 
-$("btnLogSet").onclick = async ()=>{
+async function logSet(){
   const ex = coachState.workoutJson[coachState.index];
   const weight = Number($("inWeight").value);
   const reps = Number($("inReps").value);
@@ -693,7 +726,11 @@ $("btnLogSet").onclick = async ()=>{
   };
 
   const { error } = await supabase.from("session_sets").insert(row);
-  if(error) return alert(error.message);
+  if(error){
+    console.error(error);
+    alert("Error logging set: " + error.message);
+    return;
+  }
 
   startRest(ex.rest||0);
 
@@ -702,8 +739,12 @@ $("btnLogSet").onclick = async ()=>{
   }else{
     coachState.index++;
     coachState.set=1;
+
     if(coachState.index >= coachState.workoutJson.length){
-      await supabase.from("sessions").update({status:"completed", completed_at:new Date().toISOString()}).eq("id", activeSession.id);
+      await supabase.from("sessions")
+        .update({status:"completed", completed_at:new Date().toISOString()})
+        .eq("id", activeSession.id);
+
       alert("Session complete ✅");
       $("sessionCard").classList.add("hidden");
       stopTimer();
@@ -712,15 +753,19 @@ $("btnLogSet").onclick = async ()=>{
       return;
     }
   }
+
   await renderCoachMode();
   await loadAthleteHistory();
-};
+}
 
-$("btnSkip").onclick = async ()=>{
+async function skipExercise(){
   coachState.index++;
   coachState.set=1;
   if(coachState.index >= coachState.workoutJson.length){
-    await supabase.from("sessions").update({status:"completed", completed_at:new Date().toISOString()}).eq("id", activeSession.id);
+    await supabase.from("sessions")
+      .update({status:"completed", completed_at:new Date().toISOString()})
+      .eq("id", activeSession.id);
+
     alert("Session complete ✅");
     $("sessionCard").classList.add("hidden");
     stopTimer();
@@ -728,39 +773,59 @@ $("btnSkip").onclick = async ()=>{
     return;
   }
   await renderCoachMode();
-};
+}
 
-$("btnEnd").onclick = async ()=>{
+async function endSession(){
   if(activeSession){
-    await supabase.from("sessions").update({status:"abandoned", completed_at:new Date().toISOString()}).eq("id", activeSession.id);
+    await supabase.from("sessions")
+      .update({status:"abandoned", completed_at:new Date().toISOString()})
+      .eq("id", activeSession.id);
   }
   $("sessionCard").classList.add("hidden");
   stopTimer();
-};
+}
 
 async function loadAthleteHistory(){
-  const { data: sessions } = await supabase.from("sessions")
+  const { data: sessions, error } = await supabase
+    .from("sessions")
     .select("id,started_at,workout_name_snapshot,status")
     .eq("athlete_id", currentUser.id)
     .order("started_at",{ascending:false})
     .limit(10);
 
+  if(error){
+    console.error(error);
+    return;
+  }
+
   const ids = (sessions||[]).map(s=>s.id);
   let sets=[];
   if(ids.length){
-    const { data } = await supabase.from("session_sets").select("*").in("session_id", ids).order("created_at",{ascending:false}).limit(80);
+    const { data, error: setErr } = await supabase
+      .from("session_sets")
+      .select("*")
+      .in("session_id", ids)
+      .order("created_at",{ascending:false})
+      .limit(120);
+
+    if(setErr){
+      console.error(setErr);
+      return;
+    }
     sets = data||[];
   }
 
   const tb=$("athleteHistory"); tb.innerHTML="";
-  (sets||[]).slice(0,60).forEach(s=>{
+  (sets||[]).slice(0,80).forEach(s=>{
     const d = String(s.created_at||"").slice(0,10);
-    tb.innerHTML += `<tr><td>${d}</td><td>${todayResolved?.workoutName || ""}</td><td><strong>${s.exercise}</strong></td><td>${s.weight}</td><td>${s.reps}</td><td>${s.rpe??""}</td></tr>`;
+    const wName = (sessions||[]).find(x=>x.id===s.session_id)?.workout_name_snapshot || "";
+    tb.innerHTML += `<tr><td>${d}</td><td>${wName}</td><td><strong>${s.exercise}</strong></td><td>${s.weight}</td><td>${s.reps}</td><td>${s.rpe??""}</td></tr>`;
   });
 }
 
-/** ======= Rest timer ======= **/
-let tmr=null, rem=0;
+/** =========================
+ *  Rest timer
+ *  ========================= */
 function stopTimer(){ if(tmr){clearInterval(tmr); tmr=null;} }
 function updateTimer(){
   const m=String(Math.floor(rem/60)).padStart(2,"0");
@@ -782,8 +847,66 @@ function startRest(sec){
   },1000);
 }
 
-boot();
+/** =========================
+ *  Wire UI events safely
+ *  ========================= */
+document.addEventListener("DOMContentLoaded", async () => {
+  // Header
+  $("btnLogout").addEventListener("click", doLogout);
+  $("btnExport").addEventListener("click", exportMyData);
+
+  // Login
+  $("btnSignUp").addEventListener("click", async () => {
+    const email = ($("loginEmail").value||"").trim();
+    const password = ($("loginPassword").value||"").trim();
+    $("loginMsg").textContent = "Creating account…";
+    if(!email || !password){ $("loginMsg").textContent = "Enter email + password."; return; }
+
+    const { error } = await supabase.auth.signUp({ email, password });
+    if(error){
+      console.error(error);
+      $("loginMsg").textContent = "Error: " + error.message;
+      return;
+    }
+    $("loginMsg").textContent = "Account created ✅ Now click Sign in.";
+  });
+
+  $("btnSignIn").addEventListener("click", async () => {
+    const email = ($("loginEmail").value||"").trim();
+    const password = ($("loginPassword").value||"").trim();
+    $("loginMsg").textContent = "Signing in…";
+    if(!email || !password){ $("loginMsg").textContent = "Enter email + password."; return; }
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if(error){
+      console.error(error);
+      $("loginMsg").textContent = "Error: " + error.message;
+      return;
+    }
+    $("loginMsg").textContent = "Signed in ✅";
+    setTimeout(()=>location.reload(), 250);
+  });
+
+  // Onboarding
+  $("btnCreateProfile").addEventListener("click", createProfileFromForm);
+
+  // Coach
+  $("btnSaveSchedule").addEventListener("click", saveSchedule);
+
+  // Athlete
+  $("btnStartSession").addEventListener("click", startSession);
+  $("btnLogSet").addEventListener("click", logSet);
+  $("btnSkip").addEventListener("click", skipExercise);
+  $("btnEnd").addEventListener("click", endSession);
+
+  // Start
+  try{
+    await boot();
+  }catch(e){
+    console.error(e);
+    alert("App error. Open Console (F12) and paste the first red error line.");
+  }
+});
 </script>
 </body>
 </html>
-
