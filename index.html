@@ -186,6 +186,52 @@ const SUPABASE_URL = "https://hvqewywwdaqlkipopydm.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh2cWV3eXd3ZGFxbGtpcG9weWRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNTk1NjcsImV4cCI6MjA4NjgzNTU2N30.K8xw65baxFVmdua9K0aOGG0SY-VH9Z33ZKsYIIwH_8U";
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
+
+document.addEventListener("DOMContentLoaded", () => {
+
+  const signUpBtn = document.getElementById("btnSignUp");
+  const signInBtn = document.getElementById("btnSignIn");
+
+  signUpBtn.addEventListener("click", async () => {
+    const email = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value.trim();
+    const msgEl = document.getElementById("loginMsg");
+
+    msgEl.textContent = "Creating account…";
+
+    if (!email || !password) {
+      msgEl.textContent = "Enter email + password.";
+      return;
+    }
+
+    const { error } = await supabase.auth.signUp({ email, password });
+
+    if (error) {
+      msgEl.textContent = "Error: " + error.message;
+    } else {
+      msgEl.textContent = "Account created ✅ Now click Sign in.";
+    }
+  });
+
+  signInBtn.addEventListener("click", async () => {
+    const email = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value.trim();
+    const msgEl = document.getElementById("loginMsg");
+
+    msgEl.textContent = "Signing in…";
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      msgEl.textContent = "Error: " + error.message;
+    } else {
+      location.reload();
+    }
+  });
+
+});
+
+
   window.signUp = async function () {
   const email = (document.getElementById("loginEmail")?.value || "").trim();
   const password = (document.getElementById("loginPassword")?.value || "").trim();
