@@ -190,9 +190,10 @@
 <script>
   
 /* ====== CONFIG: REPLACE KEYS ====== */
-const SUPABASE_URL  = "https://hvqewywwdaqlkipopydm.supabase.co";
+const SUPABASE_URL  = "https://hvqewywwdaqlkipopydm.sb.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh2cWV3eXd3ZGFxbGtpcG9weWRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNTk1NjcsImV4cCI6MjA4NjgzNTU2N30.K8xw65baxFVmdua9K0aOGG0SY-VH9Z33ZKsYIIwH_8U";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+window.sb = window.sb.createClient(SUPABASE_URL, SUPABASE_ANON);
+
   
 /* ====== HELPERS ====== */
 const $ = (id)=>document.getElementById(id);
@@ -304,10 +305,10 @@ function startRest(sec){
 }
 
 /* ====== AUTH ====== */
-async function doLogout(){ await supabase.auth.signOut(); location.reload(); }
+async function doLogout(){ await sb.auth.signOut(); location.reload(); }
 
 async function exportMyData(){
-  const { data: sess } = await supabase.auth.getSession();
+  const { data: sess } = await sb.auth.getSession();
   if(!sess.session) return alert("Login first.");
   const uid = sess.session.user.id;
 
@@ -318,7 +319,7 @@ async function exportMyData(){
   const ids = (sessions||[]).map(s=>s.id);
   let sets=[];
   if(ids.length){
-    const { data: ss, error: setErr } = await supabase.from("session_sets").select("*").in("session_id", ids);
+    const { data: ss, error: setErr } = await sb.from("session_sets").select("*").in("session_id", ids);
     if(setErr) return alert(setErr.message);
     sets = ss||[];
   }
@@ -333,7 +334,7 @@ async function exportMyData(){
 
 /* ====== DB helpers ====== */
 async function getMyProfile(){
-  const { data, error } = await supabase.from("profiles").select("*").eq("id", currentUser.id).maybeSingle();
+  const { data, error } = await sb.from("profiles").select("*").eq("id", currentUser.id).maybeSingle();
   if(error) throw error;
   return data || null;
 }
@@ -353,13 +354,13 @@ async function ensureLibrary(org_id, user_id){
   const rows = Object.entries(LIB).map(([name, exercises_json])=>({
     org_id, created_by:user_id, name, exercises_json, is_library:true
   }));
-  const { error: insErr } = await supabase.from("workout_templates").insert(rows);
+  const { error: insErr } = await sb.from("workout_templates").insert(rows);
   if(insErr) throw insErr;
 }
 
 /* ====== Boot ====== */
 async function boot(){
-  const { data: sess } = await supabase.auth.getSession();
+  const { data: sess } = await sb.auth.getSession();
   currentUser = sess.session?.user || null;
 
   if(!currentUser){ show("viewLogin"); return; }
@@ -400,7 +401,7 @@ async function createProfileFromForm(){
 
   if(orgErr){ console.error(orgErr); $("onboardMsg").textContent="Error: "+orgErr.message; return; }
 
-  const { error: pErr } = await supabase.from("profiles").insert({
+  const { error: pErr } = await sb.from("profiles").insert({
     id: currentUser.id, full_name: full_name||null, role, org_id: org.id
   });
 
@@ -568,7 +569,7 @@ async function startSession(){
     status: "in_progress"
   };
 
-  const { data, error } = await supabase.from("sessions").insert(payload).select("*").single();
+  const { data, error } = await sb.from("sessions").insert(payload).select("*").single();
   if(error){ console.error(error); alert("Error: "+error.message); return; }
 
   activeSession=data;
@@ -635,7 +636,7 @@ async function logSet(){
     notes: notes || null
   };
 
-  const { error } = await supabase.from("session_sets").insert(row);
+  const { error } = await sb.from("session_sets").insert(row);
   if(error){ console.error(error); alert("Error: "+error.message); return; }
 
   startRest(ex.rest||0);
@@ -646,7 +647,7 @@ async function logSet(){
     coachState.index++;
     coachState.set=1;
     if(coachState.index >= coachState.workoutJson.length){
-      await supabase.from("sessions").update({status:"completed", completed_at:new Date().toISOString()}).eq("id", activeSession.id);
+      await sb.from("sessions").update({status:"completed", completed_at:new Date().toISOString()}).eq("id", activeSession.id);
       alert("Session complete ✅");
       $("sessionCard").classList.add("hidden");
       stopTimer();
@@ -663,7 +664,7 @@ async function skipExercise(){
   coachState.index++;
   coachState.set=1;
   if(coachState.index >= coachState.workoutJson.length){
-    await supabase.from("sessions").update({status:"completed", completed_at:new Date().toISOString()}).eq("id", activeSession.id);
+    await sb.from("sessions").update({status:"completed", completed_at:new Date().toISOString()}).eq("id", activeSession.id);
     alert("Session complete ✅");
     $("sessionCard").classList.add("hidden");
     stopTimer();
@@ -675,7 +676,7 @@ async function skipExercise(){
 
 async function endSession(){
   if(activeSession){
-    await supabase.from("sessions").update({status:"abandoned", completed_at:new Date().toISOString()}).eq("id", activeSession.id);
+    await sb.from("sessions").update({status:"abandoned", completed_at:new Date().toISOString()}).eq("id", activeSession.id);
   }
   $("sessionCard").classList.add("hidden");
   stopTimer();
@@ -720,7 +721,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
     $("loginMsg").textContent="Creating account…";
     if(!email || !password){ $("loginMsg").textContent="Enter email + password."; return; }
 
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { error } = await sb.auth.signUp({ email, password });
     if(error){ console.error(error); $("loginMsg").textContent="Error: "+error.message; return; }
     $("loginMsg").textContent="Account created ✅ Now click Sign in.";
   });
@@ -731,7 +732,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
     $("loginMsg").textContent="Signing in…";
     if(!email || !password){ $("loginMsg").textContent="Enter email + password."; return; }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await sb.auth.signInWithPassword({ email, password });
     if(error){ console.error(error); $("loginMsg").textContent="Error: "+error.message; return; }
     $("loginMsg").textContent="Signed in ✅";
     setTimeout(()=>location.reload(), 250);
