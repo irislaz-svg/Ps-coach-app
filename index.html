@@ -58,14 +58,23 @@
 <main>
 
   <!-- LOGIN -->
-  <div class="card" id="viewLogin">
-    <h2>Login</h2>
-    <div class="note">Enter your email. You’ll get a login link.</div>
-    <label>Email</label>
-    <input id="loginEmail" placeholder="you@email.com" />
-   <button id="btnSendLink" onclick="sendMagicLink()">Send magic link</button>
-    <div class="note" id="loginMsg"></div>
+ <label>Email</label>
+<input id="loginEmail" placeholder="you@email.com" />
+
+<label>Password</label>
+<input id="loginPassword" type="password" placeholder="Choose a password" />
+
+<div class="row">
+  <div class="col">
+    <button id="btnSignUp" onclick="signUp()">Sign up</button>
   </div>
+  <div class="col">
+    <button class="secondary" id="btnSignIn" onclick="signIn()">Sign in</button>
+  </div>
+</div>
+
+<div class="note" id="loginMsg"></div>
+
 
   <!-- ONBOARDING -->
   <div class="card hidden" id="viewOnboarding">
