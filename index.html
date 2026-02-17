@@ -187,49 +187,56 @@ const SUPABASE_URL = "https://hvqewywwdaqlkipopydm.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh2cWV3eXd3ZGFxbGtpcG9weWRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNTk1NjcsImV4cCI6MjA4NjgzNTU2N30.K8xw65baxFVmdua9K0aOGG0SY-VH9Z33ZKsYIIwH_8U";
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-  async function signUp() {
+  window.signUp = async function () {
   const email = (document.getElementById("loginEmail")?.value || "").trim();
   const password = (document.getElementById("loginPassword")?.value || "").trim();
   const msgEl = document.getElementById("loginMsg");
-
-  if (!email || !password) {
-    if (msgEl) msgEl.textContent = "Enter email + password.";
-    return;
-  }
 
   if (msgEl) msgEl.textContent = "Creating account…";
 
-  const { error } = await supabase.auth.signUp({ email, password });
-
-  if (error) {
-    if (msgEl) msgEl.textContent = "Error: " + error.message;
-  } else {
-    if (msgEl) msgEl.textContent = "Account created ✅ Now click Sign in.";
+  if (!email || !password) {
+    if (msgEl) msgEl.textContent = "Enter email + password.";
+    return;
   }
-}
 
-async function signIn() {
+  try {
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) {
+      if (msgEl) msgEl.textContent = "Error: " + error.message;
+    } else {
+      if (msgEl) msgEl.textContent = "Account created ✅ Now click Sign in.";
+    }
+  } catch (e) {
+    console.error(e);
+    if (msgEl) msgEl.textContent = "App error. Open Console (F12).";
+  }
+};
+
+window.signIn = async function () {
   const email = (document.getElementById("loginEmail")?.value || "").trim();
   const password = (document.getElementById("loginPassword")?.value || "").trim();
   const msgEl = document.getElementById("loginMsg");
+
+  if (msgEl) msgEl.textContent = "Signing in…";
 
   if (!email || !password) {
     if (msgEl) msgEl.textContent = "Enter email + password.";
     return;
   }
 
-  if (msgEl) msgEl.textContent = "Signing in…";
-
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (error) {
-    if (msgEl) msgEl.textContent = "Error: " + error.message;
-  } else {
-    if (msgEl) msgEl.textContent = "Signed in ✅";
-    // reload to run boot() and route to onboarding/dashboard
-    setTimeout(() => location.reload(), 300);
+  try {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      if (msgEl) msgEl.textContent = "Error: " + error.message;
+    } else {
+      if (msgEl) msgEl.textContent = "Signed in ✅";
+      setTimeout(() => location.reload(), 300);
+    }
+  } catch (e) {
+    console.error(e);
+    if (msgEl) msgEl.textContent = "App error. Open Console (F12).";
   }
-}
+};
 
 
 
